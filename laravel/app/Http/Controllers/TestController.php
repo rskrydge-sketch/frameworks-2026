@@ -2,45 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class TestController extends Controller
 {
-
-    public const array DATA = [
-        [
-            "id"          => 1,
-            "name"        => "product1",
-            "description" => "product1 description",
-            "price"       => 100.00
-        ],
-        [
-            "id"          => 2,
-            "name"        => "product2",
-            "description" => "product2 description",
-            "price"       => 200.00
-        ],
-        [
-            "id"          => 3,
-            "name"        => "product3",
-            "description" => "product3 description",
-            "price"       => 300.00
-        ],
-        [
-            "id"          => 4,
-            "name"        => "product4",
-            "description" => "product4 description",
-            "price"       => 400.00
-        ],
-        [
-            "id"          => 5,
-            "name"        => "product5",
-            "description" => "product5 description",
-            "price"       => 500.00
-        ],
-    ];
 
     /**
      * @param string $id
@@ -48,15 +17,16 @@ class TestController extends Controller
      */
     public function getProductById(string $id): JsonResponse
     {
-        $products = self::DATA;
+        $product = Product::find($id);
 
-        foreach ($products as $product) {
-            if ($product['id'] == $id) {
-                return new JsonResponse($product, Response::HTTP_OK);
-            }
+        if (empty($product)) {
+            return response()->json(
+                ['message' => 'Product not found'],
+                Response::HTTP_NOT_FOUND
+            );
         }
 
-        return new JsonResponse([], Response::HTTP_NOT_FOUND);
+        return response()->json($product, Response::HTTP_OK);
     }
 
     /**
@@ -64,7 +34,9 @@ class TestController extends Controller
      */
     public function getProducts(): JsonResponse
     {
-        return new JsonResponse(self::DATA, Response::HTTP_OK);
+        $products = Product::all();
+
+        return response()->json($products, Response::HTTP_OK);
     }
 
     /**
@@ -75,11 +47,17 @@ class TestController extends Controller
     {
         $data = json_decode($request->getContent(), true);
 
-        $lastProductId = self::DATA[count(self::DATA) - 1]["id"];
+        $product = DB::transaction(function () use ($data) {
+            $product = new Product();
 
-        $data['id'] = $lastProductId + 1;
+            $product->fill($data);
 
-        return new JsonResponse($data, Response::HTTP_CREATED);
+            $product->save();
+
+            return $product;
+        });
+
+        return new JsonResponse($product, Response::HTTP_CREATED);
     }
 
     /**
@@ -89,25 +67,32 @@ class TestController extends Controller
      */
     public function updateProductById(string $id, Request $request): JsonResponse
     {
-        $products = self::DATA;
+        $product = Product::find($id);
 
-        $needProduct = null;
-
-        foreach ($products as $product) {
-            if ($product['id'] == $id) {
-                $needProduct = $product;
-            }
-        }
-
-        if (empty($needProduct)) {
-            return new JsonResponse([], Response::HTTP_NOT_FOUND);
+        if (empty($product)) {
+            return response()->json(
+                ['message' => 'Product not found'],
+                Response::HTTP_NOT_FOUND
+            );
         }
 
         $data = json_decode($request->getContent(), true);
 
-        $needProduct['price'] = $data['price'];
+        if (isset($data['name'])) {
+            $product->name = $data['name'];
+        }
 
-        return new JsonResponse($needProduct, Response::HTTP_OK);
+        if (isset($data['description'])) {
+            $product->description = $data['description'];
+        }
+
+        if (isset($data['price'])) {
+            $product->price = $data['price'];
+        }
+
+        $product->save();
+
+        return new JsonResponse($product, Response::HTTP_OK);
     }
 
     /**
@@ -116,14 +101,16 @@ class TestController extends Controller
      */
     public function deleteProductById(string $id): JsonResponse
     {
-        $products = self::DATA;
+        $product = Product::find($id);
 
-        foreach ($products as $product) {
-            if ($product['id'] == $id) {
-                // TODO remove product
-                return new JsonResponse([], Response::HTTP_NO_CONTENT);
-            }
+        if (empty($product)) {
+            return response()->json(
+                ['message' => 'Product not found'],
+                Response::HTTP_NOT_FOUND
+            );
         }
+
+        $product->delete();
 
         return new JsonResponse([], Response::HTTP_NOT_FOUND);
     }
