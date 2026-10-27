@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
+#[Route('/api')]
 final class TestController extends AbstractController
 {
 
@@ -24,7 +25,6 @@ final class TestController extends AbstractController
      */
     public function __construct(EntityManagerInterface $entityManager)
     {
-
         $this->entityManager = $entityManager;
     }
 
@@ -41,11 +41,12 @@ final class TestController extends AbstractController
         return $this->json($product, Response::HTTP_OK);
     }
 
-    //
     #[Route('/products', name: 'app_get_products', methods: ['GET'])]
-    public function getProducts(): JsonResponse
+    public function getProducts(Request $request): JsonResponse
     {
-        $products = $this->entityManager->getRepository(Product::class)->findAll();
+        $queryParams = $request->query->all();
+
+        $products = $this->entityManager->getRepository(Product::class)->getProducts($queryParams);
 
         return $this->json($products, Response::HTTP_OK);
     }
