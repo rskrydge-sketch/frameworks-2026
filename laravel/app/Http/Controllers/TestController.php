@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -30,11 +31,15 @@ class TestController extends Controller
     }
 
     /**
+     * @param Request $request
      * @return JsonResponse
      */
-    public function getProducts(): JsonResponse
+    public function getProducts(Request $request): JsonResponse
     {
-        $products = Product::all();
+        /** @var User $user */
+        $user = $request->user();
+
+        $products = Product::where('user_id', $user->id)->get();
 
         return response()->json($products, Response::HTTP_OK);
     }
@@ -46,6 +51,9 @@ class TestController extends Controller
     public function createProducts(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
+
+        /** @var User $user */
+        $user = $request->user();
 
         $product = DB::transaction(function () use ($data) {
             $product = new Product();
